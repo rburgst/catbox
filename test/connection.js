@@ -52,7 +52,7 @@ module.exports = class {
     get(key) {
 
         if (!this.cache) {
-            throw new Error('Callbacks not started');
+            throw new Error('Cache not started');
         }
 
         const segment = this.cache[key.segment];
@@ -82,13 +82,10 @@ module.exports = class {
         return result;
     }
 
-    set(key, value, ttl, callback) {
-
-        const orig = callback;
-        callback = (...args) => setImmediate(() => orig(...args));
+    set(key, value, ttl) {
 
         if (!this.cache) {
-            throw new Error('Callbacks not started');
+            throw new Error('Cache not started');
         }
 
         const envelope = {
@@ -101,28 +98,22 @@ module.exports = class {
         const segment = this.cache[key.segment];
 
         const cachedItem = segment[key.id];
-        if (cachedItem && cachedItem.timeoutId) {
+        if (cachedItem &&
+            cachedItem.timeoutId) {
+
             clearTimeout(cachedItem.timeoutId);
         }
 
-        const timeoutId = setTimeout(() => {
-
-            this.drop(key, () => { });
-        }, ttl);
-
-        envelope.timeoutId = timeoutId;
+        envelope.timeoutId = setTimeout(() => this.drop(key, Hoek.ignore), ttl);
 
         segment[key.id] = envelope;
         return null;
     }
 
-    drop(key, callback) {
-
-        const orig = callback;
-        callback = (...args) => setImmediate(() => orig(...args));
+    drop(key) {
 
         if (!this.cache) {
-            throw new Error('Callbacks not started');
+            throw new Error('Cache not started');
         }
 
         const segment = this.cache[key.segment];

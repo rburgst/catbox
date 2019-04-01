@@ -564,21 +564,39 @@ describe('Policy', () => {
             it('returns stale objects then fresh object based on timing, with only 1 concurrent generateFunc call during pendingGenerateTimeout period ', async () => {
 
                 const bench = new Hoek.Bench();
-
+/*
+3 0.8713850000058301
+1 1.6335720000060974
+2 103.07484699999623
+4 103.50545599999896
+5 293.662731000004
+1 294.13201300000947
+6 302.43996000000334
+7 312.8442930000019
+8 323.3626490000024
+2 345.3353050000005
+9 382.5414560000063
+1 382.9026359999989
+x
+2 459.0106070000038
+*/
                 let gen = 0;
 
                 const rule = {
                     expiresIn: 1000,
                     staleIn: 150,
                     staleTimeout: 5,
-                    pendingGenerateTimeout: 250,
-                    generateTimeout: 100,
+                    pendingGenerateTimeout: 500,
+                    generateTimeout: 200,
                     generateFunc: async function (id, flags) {
 
+                        const serial = ++gen;
                         console.log(1, bench.elapsed());
                         await Hoek.wait(50);
                         console.log(2, bench.elapsed());
-                        return { gen: ++gen };
+                        const item = { gen: serial };
+                        console.log('generated', item.gen);
+                        return item;
                     }
                 };
 
@@ -606,12 +624,13 @@ describe('Policy', () => {
                 expect(value3.gen).to.equal(1);        // Stale
                 console.log(8, bench.elapsed());
 
-                await Hoek.wait(50);
+                await Hoek.wait(6000);
                 console.log(9, bench.elapsed());
 
                 const value4 = await policy.get('test');
+                console.log(10);
                 expect(value4.gen).to.equal(2);         // Fresh
-                console.log(10, bench.elapsed());
+                console.log(11, bench.elapsed());
 
                 expect(gen).to.equal(2);     // original generate + 1 call while stale
             });

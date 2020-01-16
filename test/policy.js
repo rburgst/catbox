@@ -743,15 +743,15 @@ describe('Policy', { retry: true }, () => {
                 let gen = 0;
 
                 const rule = {
-                    expiresIn: 1000,
-                    staleIn: 500,
-                    staleTimeout: 5,
-                    pendingGenerateTimeout: 300,
-                    generateTimeout: false,
+                    expiresIn: 200,
+                    staleIn: 150,
+                    staleTimeout: 10,
+                    pendingGenerateTimeout: 90,
+                    generateTimeout: 2000,
                     generateFunc: async function (id, flags) {
 
                         const serial = ++gen;
-                        await Hoek.wait(200);
+                        await Hoek.wait(100);
                         return { gen: serial };
                     }
                 };
@@ -763,15 +763,17 @@ describe('Policy', { retry: true }, () => {
 
                 const value1 = await policy.get('test');
                 expect(value1.gen).to.equal(1);         // Fresh
+                const value11 = await policy.get('test');
+                expect(value11.gen).to.equal(1);         // cached
 
-                await Hoek.wait(900);
+                await Hoek.wait(160);       // now the entry is stale
 
                 const value2 = await policy.get('test');
                 expect(value2.gen).to.equal(1);         // Stale
 
-                await Hoek.wait(100);
+                await Hoek.wait(50); // after this the entry is expired, and the next generate function is running
 
-                const value3 = await policy.get('test');
+                const value3 = await policy.get('test'); // now add another query which in theory should join the in progress refresh
                 expect(value3.gen).to.equal(2);         // New
             });
 
